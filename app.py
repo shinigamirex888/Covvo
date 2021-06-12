@@ -48,7 +48,16 @@ def get_product_highlights(box):
         lst.append(highlights[i].text)
     return lst
 
+#Function to get the donut graph
+# Todo- Make donut UI
 
+def get_pie_chart(rating_list):
+    labels = ['5 Stars', '4 Stars', '3 Stars', '2 Stars','1 Stars']
+    values=rating_list
+    data = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.4,hoverinfo='label+value',title='User Rating')])
+    graphJSON = json.dumps(data, cls=plotly.utils.PlotlyJSONEncoder)
+
+    return graphJSON
 
 
 
