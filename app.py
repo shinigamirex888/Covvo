@@ -1,25 +1,34 @@
-#installing the required libraries
-
-
-from flask import Flask, render_template, request,jsonify
-import requests
-from bs4 import BeautifulSoup as bs
-from urllib.request import urlopen as uReq
+#New idea
 import pymongo
+from bs4 import BeautifulSoup as bs
+import requests
+from urllib.request import urlopen as ureq
+from flask import Flask,render_template,request
+from pandas import to_datetime
+from flask_cors import cross_origin
+from numpy import timedelta64
+import datetime
+import logging
+import plotly
+import pymongo as mg
+import plotly.graph_objects as go
+import json
 
-app = Flask(__name__)
+""" checking the database logs(logger)"""
+
+DBlogger=logging.getLogger('Database')
+
+DBlogger.setLevel(logging.DEBUG)
+
+formatter=logging.Formatter('%(asctime)s:%(name)s: %(message)s')
+
+file_handeler=logging.FileHandler('Database.log')
+
+file_handeler.setLevel(logging.ERROR)
+
+file_handeler.setFormatter(formatter)
+
+DBlogger.addHandler(file_handeler)
 
 
-@app.route('/',methods=['POST','GET'])
-def index():
-    if request.method=='POST':
-        searchString=request.form['content'].replace(" ","")
-        #this will shorten the input content
-        try:
-            #will access data from the existing database if present.
-            dbConn = pymongo.MongoClient("mongodb://localhost:27017/")
-            db = dbConn['crawlerDB']
-            reviews = db[searchString].find({})
-            if reviews.count() > 0:
-                return render_template('results.html', reviews=reviews)
 
