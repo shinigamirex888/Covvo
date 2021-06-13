@@ -122,6 +122,34 @@ def get_review(commentsbox ,search,flag=True):
         reviews.append(my_dict)
     return(reviews)
 
+""""Function to get the product info """
+
+def get_product_info(temp_product_page,search,product_link):
+    product_info=[]
+    try:
+        product_name=temp_product_page.find_all('span',{'class':"B_NuCI"})[0].text
+        product_name=product_name[:product_name.find('(')]
+        # print(product_name)
+    except:
+        product_name=search
+
+    try:
+        product_overall_rating=temp_product_page.find('span',{'class':'_1lRcqv'}).div.text
+        # print(product_overall_rating)
+    except:
+        product_overall_rating="No Rating Available !"
+
+    try:
+        product_seller=temp_product_page.find_all('div',{'class':'_1RLviY'})[0].text
+        product_seller_rating=product_seller[-3:]
+        product_seller=product_seller[:-3]
+        # print(product_seller_rating)
+        # print(product_seller)
+    except:
+        product_seller='No Information Available About Product Seller'
+        product_seller_rating='No Information Available About Product Seller Rating'
+
+
 
 
 
