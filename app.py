@@ -60,6 +60,71 @@ def get_pie_chart(rating_list):
     return graphJSON
 
 
+#Function to get the reviews
+
+def get_review(commentsbox ,search,flag=True):
+    reviews = []
+    for comment in commentsbox[:-1]:
+        try:
+            name = comment.find_all('p', {"class": "_2sc7ZR _2V5EHH"})[0].text
+            # print("Name: ",name)
+        except:
+            name = "No user name found !"
+
+        try:
+            if(flag==True):
+                rating = comment.div.div.div.div.text[0]
+
+            else:
+                rating = comment.div.div.div.div.text
+
+        except:
+            rating = 'There is no rating given by this user !'
+        try:
+            heading = comment.div.div.div.p.text
+
+        except:
+            heading = 'No Heading found for this review !'
+
+        try:
+            comment_body = comment.find_all('div', {"class": 't-ZTKy'})[0].text
+            if(comment_body.endswith('READ MORE')):
+                comment_body=comment_body[:comment_body.find('READ MORE')]
+            else:
+                comment_body=comment_body
+
+        except:
+            comment_body = "No comments given by user !"
+
+        """To get the date since user using this device !"""
+        try:
+            dt=comment.find_all('p', {'class': "_2sc7ZR"})[1].text
+            # print(dt)
+            if("months" in dt):
+                using_since = int(dt[:dt.find('months')])
+                # print(using_since)
+            else:
+                dt=to_datetime(dt)
+                today = to_datetime(datetime.datetime.today().strftime('%Y-%m-%d'))
+                using_since=int((today-dt)/timedelta64(1,'M'))
+
+                # print(using_since)
+
+            # print(using_since)
+            # buyed_on = comment.find_all('p', {'class': "_2sc7ZR"})[1].text
+            # print(buyed_on)
+
+        except:
+            using_since = "No information present !"
+
+        my_dict = {"Product": search, "Name": name, "Rating": rating, "CommentHead": heading, "Comment": comment_body,'Using Since':str(using_since)+" months"}
+
+        reviews.append(my_dict)
+    return(reviews)
+
+
+
+
 
 
 
