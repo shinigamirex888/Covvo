@@ -222,3 +222,130 @@ def get_product_info(temp_product_page, search, product_link):
     product_info.append(mydict)
 
     return product_info
+
+
+@cross_origin()
+@app.route("/", methods=["GET", "POST"])
+def homepage():
+    return render_template('index.html')
+
+
+@app.route("/about", methods=["GET", "POST"])
+def about():
+    return render_template('about.html')
+
+
+@app.route('/scrap', methods=["POST"])
+def scrap():
+    if request.method == "POST":
+        search = request.form["search_content"].replace(' ', '')
+        DBlogger.debug('Requeest Recieved for {}'.format(search))
+        try:
+            url = "https://www.flipkart.com/search?q=" + search
+            uclient = ureq(url)
+            # print(uclient)
+            flipkartpage = uclient.read()
+            uclient.close()
+            flipkart_html = bs(flipkartpage, 'html.parser')
+            # print(flipkart_html)
+            # _2pi5LC col-12-12 this class has been change with recent one _1AtVbE col-12-12
+            bigbox = flipkart_html.findAll('div', {'class': '_1AtVbE col-12-12'})
+            # print('bigbox',bigbox)
+            del bigbox[0:3]
+            box = bigbox[0]
+            product_highlights = []
+            product_detail = []
+
+            # print(product_highlights)
+            product_link = "https://www.flipkart.com" + box.div.div.div.a['href']
+            # print(product_link)
+            product_open_page = requests.get(product_link)
+            product_html = bs(product_open_page.text, 'html.parser')
+            product_highlights.append(get_product_highlights(product_html))
+            try:
+                rating = product_html.find_all('div', {"class": "_1uJVNT"})
+                rating_list = []
+                for i in range(len(rating)):
+                    # print(type(rating[i].text))
+                    rating_list.append(int(rating[i].text.replace(',', '')))
+                pie_chart = get_pie_chart(rating_list)
+                DBlogger.debug('Got Pie chart for {}'.format(search))
+
+            except Exception as e:
+                DBlogger.exception(e)
+                # DBlogger.error(e)
+                print(e)
+            product_detail.extend(get_product_info(product_html, search, product_link))
+
+            reviews = []
+            """Conncecting with DataBase"""
+            try:
+                dbConn = pymongo.MongoClient("mongodb://localhost:27017/")
+                # db_connetion=mg.MongoClient("mongodb+srv://scrapper:12345@scrapperdb.p8wac.mongodb.net/scrapper?retryWrites=true&w=majority")
+                # print(db_connetion.test)
+                DBlogger.debug('Successfully Connected with MongoDB !')
+
+            except Exception as e:
+                DBlogger.exception(e)
+
+            try:
+                # db=db_connetion['Scrapper']
+                db = dbConn['crawlerDB']
+                check = db[search].find({})
+
+                if (check.count() > 0):
+                    reviews = list(check)
+
+                    DBlogger.debug('Found Collection in Database {}'.format(search))
+                    return render_template('result_page.html', product_detail=product_detail, reviews=reviews,
+                                           product_highlights=product_highlights, pie_chart=pie_chart,
+                                           total_reviews_=len(reviews))
+                else:
+
+                    # To get the total reviews of the product
+                    try:
+                        total_reviews = int(
+                            product_html.find_all('div', {'class': "_3UAT2v _16PBlm"})[0].text.replace('All',
+                                                                                                       '').replace(
+                                'reviews', ''))
+                        next_link = product_html.find("div", {"class": "_3UAT2v _16PBlm"})
+
+                    except:
+                        # print(e)
+                        total_reviews = int(
+                            product_html.find_all('div', {'class': "_3UAT2v _33R3aa"})[0].text.replace('All',
+                                                                                                       '').replace(
+                                'reviews', ''))
+                        next_link = product_html.find("div", {"class": "_3UAT2v _33R3aa"})
+
+                    # To get the next review page and to get generating url for the review
+                    if (total_reviews > 10):
+
+                        """ To get the next review link"""
+
+                        next_link = next_link.find_parent().attrs['href']
+                        # next_link="#"
+                        next_review_link = "https://www.flipkart.com" + next_link
+
+                        next_review_page = requests.get(next_review_link)
+                        next_page_html = bs(next_review_page.text, 'html.parser')
+                        """To find out how many total review pages are there for perticular product"""
+
+                        mx = next_page_html.find_all('div', {'class': '_2MImiq _1Qnn1K'})
+                        for i in range(len(mx)):
+                            """To get max number of reviews pages """
+                            temp_max_reviews = mx[i].span.text
+                            """To get the generating link of reviews"""
+                            generating_link = mx[i].a['href']
+
+                            # This link will be used to get all liks of the another pages of reviews
+
+                            generating_link = generating_link[:-1]
+                            # print(generating_link)
+                        """To get the maximum pages of the reviews that are available"""
+                        max_reviews = temp_max_reviews[temp_max_reviews.find('of') + 2:]
+                        max_reviews = int(max_reviews.replace(',', ''))
+                        # print(max_reviews)
+
+                    else:
+                        commentsbox = product_html.find_all('div', {"class": "_16PBlm"})
