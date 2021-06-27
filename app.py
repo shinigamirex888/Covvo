@@ -349,3 +349,77 @@ def scrap():
 
                     else:
                         commentsbox = product_html.find_all('div', {"class": "_16PBlm"})
+
+                    # To check the count of the reveiws
+
+                    try:
+
+                        if (len(reviews) < 501 and total_reviews > 10):
+                            for i in range(1, max_reviews + 1):
+                                if (len(reviews) >= 500):
+                                    break
+
+                                else:
+                                    # Iterating over Review pages to find the url of reviews of perticular product
+
+                                    next_review_generating_link = "https://www.flipkart.com" + generating_link + str(i)
+                                    # print(next_review_generating_link)
+                                    """Here we are going with one by one link with the help of generating link !"""
+                                    temp_review_page = requests.get(next_review_generating_link)
+                                    temp_review_page_html = bs(temp_review_page.text, 'html.parser')
+                                    temp_comment_box = temp_review_page_html.find_all('div',
+                                                                                      {'class': '_1AtVbE col-12-12'})
+                                    """Passing this review page to function which will scrap the reviews """
+                                    temp_reveiew_list = get_review(temp_comment_box, search)
+                                    temp_reveiew_list = temp_reveiew_list[3:]
+                                    # if(temp_reveiew_list[0].get('Name')=="No user name found !"):
+                                    #     # print(temp_reveiew_list)
+                                    #     temp_reveiew_list=temp_reveiew_list[1:]
+                                    reviews.extend(temp_reveiew_list)
+
+                        elif (len(reviews) < 501 and total_reviews < 10):
+                            """If we have less than 10 reviews then just passing that page to review"""
+                            temp_reveiew_list = get_review(commentsbox, search, flag=False)
+                            reviews.extend(temp_reveiew_list)
+                            # print(len(reviews))
+                        DBlogger.debug('Reviews for {} are {}'.format(search, len(reviews)))
+
+                        """To Insert The Data Into Database"""
+                        try:
+                            col_name = db[search]
+                            DBlogger.info('New collection Created as {}'.format(col_name))
+                            if (len(reviews) > 501):
+                                reviews = reviews[:500]
+
+                            if (len(reviews) == 0):
+                                my_dict = {"Product": search, "Name": "-", "Rating": "-", "CommentHead": "-",
+                                           "Comment": "No Reviews Available for this product", 'Using Since': "-"}
+
+                                reviews.append(my_dict)
+
+                            col_name.insert_many(reviews)
+                            DBlogger.debug("{} Added To {} Collection".format(len(reviews), col_name))
+                            return render_template('result_page.html', product_detail=product_detail, reviews=reviews,
+                                                   product_highlights=product_highlights, pie_chart=pie_chart,
+                                                   total_reviews_=len(reviews))
+
+
+                        except Exception as e:
+                            DBlogger.exception(e)
+
+                    except Exception as e:
+                        DBlogger.exception(e)
+
+            except Exception as e:
+                DBlogger.exception(e)
+                print(e)
+
+
+        except Exception as e:
+            logging.debug(e)
+            print(e)
+            return ("<h1>Something Went Wrong ! We'll Fix Issue Soon And We'll Be Back</h1>")
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
